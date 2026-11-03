@@ -131,8 +131,15 @@ func (a *AmfApp) Start() {
 		HandleConnectionError: ngap.HandleSCTPConnError,
 	}
 
-	sctpConfig := ngap_service.NewSctpConfig(factory.AmfConfig.GetSctpConfig())
-	ngap_service.Run(a.Context().NgapIpList, a.Context().NgapPort, ngapHandler, sctpConfig)
+	if a.cfg.Configuration.N2Transport == "sctp-shm" {
+		if err := ngap_service.RunSharedMemory(a.cfg.Configuration.N2SharedMemory, ngapHandler); err != nil {
+			logger.InitLog.Fatalf("N2 SCTP/shared-memory startup: %v", err)
+			return
+		}
+	} else {
+		sctpConfig := ngap_service.NewSctpConfig(factory.AmfConfig.GetSctpConfig())
+		ngap_service.Run(a.Context().NgapIpList, a.Context().NgapPort, ngapHandler, sctpConfig)
+	}
 	logger.InitLog.Infoln("Server started")
 
 	a.wg.Add(1)
@@ -157,7 +164,7 @@ func (a *AmfApp) Start() {
 
 	go gmm.PduSessionEstReqHandler()
 	go ngap.N2HandoverReqHandler()
-	
+
 	a.WaitRoutineStopped()
 }
 

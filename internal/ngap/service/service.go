@@ -8,10 +8,10 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/free5gc/sctp"
 	"github.com/nycu-ucr/amf/internal/logger"
 	"github.com/nycu-ucr/amf/pkg/factory"
 	"github.com/nycu-ucr/ngap"
-	"github.com/free5gc/sctp"
 )
 
 type NGAPHandler struct {
@@ -163,11 +163,19 @@ func listenAndServe(addr *sctp.SCTPAddr, handler NGAPHandler, sctpConfig *sctp.S
 
 func Stop() {
 	logger.NgapLog.Infof("Close SCTP server...")
-	if err := sctpListener.Close(); err != nil {
-		logger.NgapLog.Error(err)
-		logger.NgapLog.Infof("SCTP server may not close normally.")
+	if sharedCancel != nil {
+		sharedCancel()
 	}
+	if sharedEndpoint != nil {
+		_ = sharedEndpoint.Close()
+	}
+	if sctpListener != nil {
+		if err := sctpListener.Close(); err != nil {
+			logger.NgapLog.Error(err)
+			logger.NgapLog.Infof("SCTP server may not close normally.")
+		}
 
+	}
 	connections.Range(func(key, value interface{}) bool {
 		conn := value.(net.Conn)
 		if err := conn.Close(); err != nil {

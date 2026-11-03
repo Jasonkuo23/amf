@@ -13,6 +13,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/davecgh/go-spew/spew"
+	n2 "github.com/nycu-ucr/l25gc-n2-transport"
 
 	"github.com/nycu-ucr/amf/internal/logger"
 	"github.com/nycu-ucr/openapi/models"
@@ -51,6 +52,14 @@ type Config struct {
 
 func (c *Config) Validate() (bool, error) {
 	if configuration := c.Configuration; configuration != nil {
+		if configuration.N2Transport == "sctp-shm" {
+			if configuration.N2SharedMemory == nil {
+				return false, fmt.Errorf("n2SharedMemory is required for sctp-shm")
+			}
+			if err := configuration.N2SharedMemory.Validate(); err != nil {
+				return false, err
+			}
+		}
 		if result, err := configuration.validate(); err != nil {
 			return result, err
 		}
@@ -66,6 +75,8 @@ type Info struct {
 }
 
 type Configuration struct {
+	N2Transport            string            `yaml:"n2Transport,omitempty" valid:"optional,in(sctp|sctp-shm)"`
+	N2SharedMemory         *n2.Config        `yaml:"n2SharedMemory,omitempty" valid:"-"`
 	AmfName                string            `yaml:"amfName,omitempty" valid:"required, type(string)"`
 	NgapIpList             []string          `yaml:"ngapIpList,omitempty" valid:"required"`
 	NgapPort               int               `yaml:"ngapPort,omitempty" valid:"optional,port"`
